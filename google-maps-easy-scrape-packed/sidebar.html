@@ -1,0 +1,101 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="sidebar.css">
+    <!-- Override broken inline styles with cleaner class-based approach if needed -->
+    <style>
+        /* Force reset some potential inline styles conflicts */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="sidebar-container">
+        <!-- AUTH SECTION -->
+        <div id="login-view">
+            <div>
+                <h3>MapLeads AI</h3>
+                <p style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">Sign in to start scraping</p>
+            </div>
+
+            <button id="googleLoginBtn">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google"
+                    style="width:18px;height:18px;">
+                Sign in with Google
+            </button>
+
+            <p id="auth-message"
+                style="color: var(--error-text); font-size: 11px; text-align: center; max-width: 250px; margin-top:10px;">
+            </p>
+        </div>
+
+        <!-- MAIN APP SECTION -->
+        <div id="main-view" class="hidden" style="display: flex; flex-direction: column; height: 100%;">
+            <div class="header">
+                <h2>MapLeads AI</h2>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <!-- Admin Button (Hidden by default) -->
+                    <button id="adminBtn" class="hidden" style="background:none; border:none; cursor:pointer;"
+                        title="Admin Dashboard">
+                        <span style="font-size: 16px;">👑</span>
+                    </button>
+                    <!-- Client Dashboard Button -->
+                    <button id="clientBtn" style="background:none; border:none; cursor:pointer;" title="My Dashboard">
+                        <span style="font-size: 16px;">👤</span>
+                    </button>
+                    <!-- Close Button -->
+                    <button id="toggle-btn" title="Close Sidebar">×</button>
+                </div>
+            </div>
+
+            <div id="user-info">
+                <span><span id="user-email">user@example.com</span></span>
+                <button id="logoutBtn"
+                    style="background:none; border:none; color: var(--primary); cursor:pointer; font-size: 11px;">Logout</button>
+            </div>
+
+            <div class="controls">
+                <button id="scrapeBtn" class="btn primary">Scrape Results</button>
+                <button id="downloadBtn" class="btn secondary" disabled>Download CSV</button>
+                <button id="sheetsBtn" class="btn" style="background: #217346; color:white;" disabled>Export to
+                    Sheets</button>
+            </div>
+
+            <div class="status-panel">
+                <small id="statusText">Ready</small>
+                <small id="limitText" style="float: right;">Checking...</small>
+            </div>
+
+            <div class="results-container">
+                <table id="resultsTable">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Rating</th>
+                            <th>Enrichment</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="sidebar.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapLeads AI - Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(59, 130, 246, 0.2);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid #334155;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .chart-container {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+        }
+    </style>
+</head>
+
+<body class="text-gray-100 font-sans">
+
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <div class="sidebar w-64 fixed h-full overflow-y-auto border-r border-gray-700">
+            <div class="p-6">
+                <h1
+                    class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent flex items-center">
+                    <i class="fas fa-chart-line mr-2"></i> MapLeads AI
+                </h1>
+                <p class="text-sm text-gray-400 mt-2">Admin Dashboard</p>
+            </div>
+
+            <nav class="px-4 space-y-2">
+                <button onclick="showSection('dashboard')"
+                    class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-500/20 transition flex items-center text-blue-400">
+                    <i class="fas fa-chart-bar mr-3 w-5"></i> Dashboard
+                </button>
+                <button onclick="showSection('users')"
+                    class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-500/20 transition flex items-center text-gray-300">
+                    <i class="fas fa-users mr-3 w-5"></i> Users
+                </button>
+                <button onclick="showSection('analytics')"
+                    class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-500/20 transition flex items-center text-gray-300">
+                    <i class="fas fa-chart-pie mr-3 w-5"></i> Analytics
+                </button>
+                <button onclick="showSection('settings')"
+                    class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-blue-500/20 transition flex items-center text-gray-300">
+                    <i class="fas fa-cog mr-3 w-5"></i> Settings
+                </button>
+            </nav>
+
+            <div class="absolute bottom-6 left-0 right-0 px-4">
+                <button onclick="logout()"
+                    class="w-full px-4 py-2 bg-red-500/20 hover:bg-red-500/40 text-red-300 rounded-lg transition flex items-center justify-center">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="ml-64 w-full overflow-auto">
+            <!-- Top Bar -->
+            <div
+                class="bg-gradient-to-r from-slate-800 to-slate-900 border-b border-gray-700 px-8 py-4 sticky top-0 z-10">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 id="pageTitle" class="text-2xl font-bold">Dashboard</h2>
+                        <p class="text-sm text-gray-400 mt-1">Welcome back, Admin</p>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <div class="text-right">
+                            <p id="userEmail" class="text-sm font-medium">Loading...</p>
+                            <p class="text-xs text-gray-400">Administrator</p>
+                        </div>
+                        <div
+                            class="w-10 h-10 bg-gradient-to-r from-blue-400 to-cyan-400 rounded-full flex items-center justify-center">
+                            <i class="fas fa-user text-slate-900"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="p-8">
+                <!-- Dashboard Section -->
+                <div id="dashboard" class="section">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                        <div class="stat-card card-hover rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-sm">Total Users</p>
+                                    <p id="totalUsers" class="text-3xl font-bold mt-2">0</p>
+                                    <p class="text-xs text-green-400 mt-2"><i class="fas fa-arrow-up"></i> +12% this
+                                        week</p>
+                                </div>
+                                <div class="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-users text-2xl text-blue-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card card-hover rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-sm">Total Scrapes</p>
+                                    <p id="totalScrapes" class="text-3xl font-bold mt-2">0</p>
+                                    <p class="text-xs text-green-400 mt-2"><i class="fas fa-arrow-up"></i> +23% this
+                                        week</p>
+                                </div>
+                                <div class="w-12 h-12 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-database text-2xl text-cyan-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card card-hover rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-sm">Active Users</p>
+                                    <p id="activeUsers" class="text-3xl font-bold mt-2">0</p>
+                                    <p class="text-xs text-green-400 mt-2"><i class="fas fa-arrow-up"></i> +5% this week
+                                    </p>
+                                </div>
+                                <div class="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-circle-dot text-2xl text-green-400"></i>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card card-hover rounded-lg p-6">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-sm">Uptime</p>
+                                    <p class="text-3xl font-bold mt-2">99.9%</p>
+                                    <p class="text-xs text-green-400 mt-2"><i class="fas fa-check"></i> All Systems OK
+                                    </p>
+                                </div>
+                                <div class="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                                    <i class="fas fa-server text-2xl text-purple-400"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="chart-container">
+                            <h3 class="text-lg font-bold mb-4 flex items-center">
+                                <i class="fas fa-chart-line mr-2 text-blue-400"></i> Users Growth
+                            </h3>
+                            <canvas id="usersChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h3 class="text-lg font-bold mb-4 flex items-center">
+                                <i class="fas fa-chart-pie mr-2 text-cyan-400"></i> Scrapes Distribution
+                            </h3>
+                            <canvas id="scrapesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Section -->
+                <div id="users" class="section hidden">
+                    <div class="mb-6 flex justify-between items-center">
+                        <h3 class="text-xl font-bold">Manage Users</h3>
+                        <button class="btn-primary px-4 py-2 text-white rounded-lg">
+                            <i class="fas fa-user-plus mr-2"></i> Add User
+                        </button>
+                    </div>
+                    <div class="chart-container overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="border-b border-gray-600">
+                                <tr>
+                                    <th class="text-left py-3 px-4">Email</th>
+                                    <th class="text-left py-3 px-4">Role</th>
+                                    <th class="text-left py-3 px-4">Status</th>
+                                    <th class="text-left py-3 px-4">Joined</th>
+                                    <th class="text-left py-3 px-4">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTable">
+                                <tr class="border-b border-gray-700 hover:bg-gray-700/30">
+                                    <td class="py-3 px-4">Loading...</td>
+                                    <td class="py-3 px-4">-</td>
+                                    <td class="py-3 px-4"><span
+                                            class="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs">Active</span>
+                                    </td>
+                                    <td class="py-3 px-4">-</td>
+                                    <td class="py-3 px-4"><button
+                                            class="text-blue-400 hover:text-blue-300">Edit</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Analytics Section -->
+                <div id="analytics" class="section hidden">
+                    <h3 class="text-xl font-bold mb-6">Analytics & Reports</h3>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="chart-container">
+                            <h4 class="font-bold mb-4">Daily Scrapes</h4>
+                            <canvas id="dailyScrapesChart"></canvas>
+                        </div>
+                        <div class="chart-container">
+                            <h4 class="font-bold mb-4">Revenue</h4>
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings Section -->
+                <div id="settings" class="section hidden">
+                    <h3 class="text-xl font-bold mb-6">Settings</h3>
+                    <div class="chart-container space-y-6">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">API Key</label>
+                            <div class="flex items-center">
+                                <input type="password"
+                                    class="flex-1 bg-slate-700 border border-gray-600 rounded px-4 py-2 text-gray-300"
+                                    value="sk_live_••••••••" readonly>
+                                <button
+                                    class="ml-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded">Copy</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Webhook URL</label>
+                            <input type="text"
+                                class="w-full bg-slate-700 border border-gray-600 rounded px-4 py-2 text-gray-300"
+                                placeholder="https://your-domain.com/webhook">
+                        </div>
+                        <button class="btn-primary px-6 py-2 text-white rounded-lg">Save Changes</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyC4xDvSVQg3fW3j-4J4E8Qh1L2M9N0O1P2",
+            authDomain: "mapleads-ai.firebaseapp.com",
+            projectId: "mapleads-ai",
+            storageBucket: "mapleads-ai.appspot.com",
+            messagingSenderId: "241819621736",
+            appId: "1:241819621736:web:abc123def456"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Check Authentication
+        window.addEventListener('load', () => {
+            auth.onAuthStateChanged(user => {
+                if (!user) {
+                    window.location.href = '/admin/login.html';
+                } else {
+                    document.getElementById('userEmail').textContent = user.email;
+                    loadDashboardData(user);
+                }
+            });
+        });
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+
+            const titles = {
+                dashboard: 'Dashboard',
+                users: 'Manage Users',
+                analytics: 'Analytics',
+                settings: 'Settings'
+            };
+            document.getElementById('pageTitle').textContent = titles[sectionId];
+        }
+
+        async function loadDashboardData(user) {
+            try {
+                const token = await user.getIdToken();
+                const response = await fetch('http://localhost:5000/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+
+                document.getElementById('totalUsers').textContent = data.totalUsers;
+                document.getElementById('totalScrapes').textContent = data.totalScrapes;
+                document.getElementById('activeUsers').textContent = data.activeUsers;
+
+                // Initialize Charts
+                initCharts();
+                loadUsers(user);
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+
+        function initCharts() {
+            const ctx1 = document.getElementById('usersChart').getContext('2d');
+            new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [{
+                        label: 'New Users',
+                        data: [12, 19, 3, 5, 2, 3, 15],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#9ca3af' }, grid: { color: '#374151' } },
+                        x: { ticks: { color: '#9ca3af' }, grid: { color: '#374151' } }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('scrapesChart').getContext('2d');
+            new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Completed', 'In Progress', 'Failed'],
+                    datasets: [{
+                        data: [65, 25, 10],
+                        backgroundColor: ['#3b82f6', '#06b6d4', '#ef4444']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { labels: { color: '#9ca3af' } } }
+                }
+            });
+        }
+
+        async function loadUsers(user) {
+            try {
+                const token = await user.getIdToken();
+                const response = await fetch('http://localhost:5000/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const users = await response.json();
+
+                const tbody = document.getElementById('usersTable');
+                tbody.innerHTML = users.map(u => `
+                <tr class="border-b border-gray-700 hover:bg-gray-700/30">
+                    <td class="py-3 px-4">${u.email}</td>
+                    <td class="py-3 px-4"><span class="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">${u.role || 'User'}</span></td>
+                    <td class="py-3 px-4"><span class="px-3 py-1 bg-green-500/20 text-green-300 rounded-full text-xs">Active</span></td>
+                    <td class="py-3 px-4 text-sm">${new Date(u.createdAt?.seconds * 1000).toLocaleDateString()}</td>
+                    <td class="py-3 px-4"><button class="text-blue-400 hover:text-blue-300 text-sm">Edit</button></td>
+                </tr>
+            `).join('');
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        function logout() {
+            auth.signOut().then(() => {
+                window.location.href = '/admin/login.html';
+            });
+        }
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Google Maps Easy Scrape</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --card-bg: #161b22;
+      --primary: #58a6ff;
+      --secondary: #ff7b72;
+      --text-main: #c9d1d9;
+      --text-muted: #8b949e;
+      --border: #30363d;
+      --accent-gradient: linear-gradient(135deg, #FF69B4, #4169E1);
+    }
+
+    body {
+      min-width: 400px;
+      margin: 0;
+      padding: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      overflow: hidden;
+    }
+
+    .container {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .logo-container {
+      margin-bottom: 20px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(65, 105, 225, 0.2);
+    }
+
+    .logo-container img {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    h1 {
+      font-size: 20px;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 10px 0 5px 0;
+      font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    p {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin: 5px 0 20px 0;
+      line-height: 1.5;
+    }
+
+    .status-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 15px;
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .status-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 10px;
+      font-size: 13px;
+    }
+
+    .status-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .status-label {
+      color: var(--text-muted);
+    }
+
+    .status-value {
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .btn-primary {
+      background: var(--accent-gradient);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      width: 100%;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(65, 105, 225, 0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(65, 105, 225, 0.6);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    footer {
+      margin-top: 20px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    footer a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    footer a:hover {
+      color: white;
+    }
+
+    .pulse {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.4);
+      }
+
+      70% {
+        box-shadow: 0 0 0 10px rgba(65, 105, 225, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(65, 105, 225, 0);
+      }
+    }
+
+    /* Hide old elements that we don't need since sidebar handles logic */
+    #actionButton,
+    #downloadCsvButton,
+    #filenameInput,
+    #resultsTable,
+    #message {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="logo-container pulse">
+      <img src="map.png" alt="Logo">
+    </div>
+
+    <h1>Google Maps Easy Scrape</h1>
+    <p>Enriched with Gemini AI<br>Launch sidebar to start scraping</p>
+
+    <div class="status-card">
+      <div class="status-item">
+        <span class="status-label">Status</span>
+        <span class="status-value">Active</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Version</span>
+        <span class="status-value">1.1</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">AI Engine</span>
+        <span class="status-value">&#x2728; Gemini Flash</span>
+      </div>
+    </div>
+
+    <p style="font-size: 11px; opacity: 0.7;">
+      Go to Google Maps and look for the<br>sidebar on the right.
+    </p>
+
+    <footer>
+      Created with &#x2764;&#xFE0F; by <a href="#" target="_blank">Samadly</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+
+</html>

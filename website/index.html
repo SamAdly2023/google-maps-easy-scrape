@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MapLeads AI - #1 Google Maps Scraper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        dark: '#0d1117',
+                        card: '#161b22',
+                        primary: '#58a6ff',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+
+<body class="bg-dark text-gray-300 font-sans">
+
+    <!-- Navigation -->
+    <nav class="border-b border-gray-800 bg-card/80 backdrop-blur fixed w-full z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center">
+                    <span
+                        class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">
+                        MapLeads AI
+                    </span>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <a href="#features" class="hover:text-white px-3 py-2 rounded-md font-medium">Features</a>
+                        <a href="#pricing" class="hover:text-white px-3 py-2 rounded-md font-medium">Pricing</a>
+                        <a href="/admin.html"
+                            class="text-primary hover:text-blue-300 px-3 py-2 rounded-md font-medium">Dashboard
+                            Login</a>
+                        <a href="#"
+                            class="bg-primary text-white hover:bg-blue-600 px-4 py-2 rounded-full font-bold transition">
+                            Install Chrome Extension
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="relative pt-32 pb-20 sm:pt-40 sm:pb-24 overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+            <h1 class="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-8">
+                Turn Google Maps into your<br>
+                <span class="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">Lead
+                    Database</span>
+            </h1>
+            <p class="mt-4 text-xl text-gray-400 max-w-3xl mx-auto mb-10">
+                Instantly extract emails, phone numbers, and SEO data from thousands of businesses.
+                Enriched with Gemini AI for personalized outreach.
+            </p>
+            <div class="flex justify-center gap-4">
+                <a href="#"
+                    class="bg-primary text-white px-8 py-4 rounded-full text-lg font-bold hover:bg-blue-600 transition shadow-lg shadow-blue-500/30">
+                    Get Started Free
+                </a>
+                <a href="#demo"
+                    class="bg-card border border-gray-700 text-white px-8 py-4 rounded-full text-lg font-bold hover:bg-gray-800 transition">
+                    Watch Demo
+                </a>
+            </div>
+        </div>
+
+        <!-- Background Glow -->
+        <div
+            class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-blue-500 rounded-full blur-[120px] opacity-20 -z-10">
+        </div>
+    </div>
+
+    <!-- Features Grid -->
+    <div id="features" class="py-24 bg-card">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-white mb-4">Why choose MapLeads AI?</h2>
+                <p class="text-gray-400">Everything you need to scale your agency outreach.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div
+                    class="p-8 rounded-2xl bg-dark border border-gray-800 hover:border-blue-500/50 transition duration-300">
+                    <div class="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-bolt text-blue-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">Instant Scraping</h3>
+                    <p class="text-gray-400">Extract Name, Address, Phone, Website, and Reviews from any Google Maps
+                        search in seconds.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div
+                    class="p-8 rounded-2xl bg-dark border border-gray-800 hover:border-blue-500/50 transition duration-300">
+                    <div class="w-12 h-12 bg-purple-500/10 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-brain text-purple-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">AI Enrichment</h3>
+                    <p class="text-gray-400">Gemini AI visits websites to find Emails, Owner Names, and analyze SEO
+                        health automatically.</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div
+                    class="p-8 rounded-2xl bg-dark border border-gray-800 hover:border-blue-500/50 transition duration-300">
+                    <div class="w-12 h-12 bg-green-500/10 rounded-lg flex items-center justify-center mb-6">
+                        <i class="fas fa-file-csv text-green-400 text-xl"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">One-Click Export</h3>
+                    <p class="text-gray-400">Send leads directly to Google Sheets or download as CSV compatible with any
+                        CRM.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pricing -->
+    <div id="pricing" class="py-24 relative overflow-hidden">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-white mb-4">Simple, Transparent Pricing</h2>
+                <p class="text-gray-400">Start for free, upgrade when you scale.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <!-- Free Tier -->
+                <div class="p-8 rounded-2xl bg-card border border-gray-700">
+                    <h3 class="text-xl font-bold text-white">Starter</h3>
+                    <div class="my-6">
+                        <span class="text-4xl font-bold text-white">$0</span>
+                        <span class="text-gray-400">/mo</span>
+                    </div>
+                    <ul class="space-y-4 mb-8 text-gray-400">
+                        <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 50 Leads / Day
+                        </li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Basic Export</li>
+                        <li class="flex items-center"><i class="fas fa-times text-gray-600 mr-2"></i> No AI Enrichment
+                        </li>
+                    </ul>
+                    <a href="#"
+                        class="block w-full text-center py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-800 transition">Current
+                        Plan</a>
+                </div>
+
+                <!-- Pro Tier -->
+                <div
+                    class="p-8 rounded-2xl bg-gradient-to-b from-blue-900/40 to-card border border-blue-500 relative transform md:-translate-y-4">
+                    <div
+                        class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-bold shadow-lg">
+                        MOST POPULAR
+                    </div>
+                    <h3 class="text-xl font-bold text-white">Pro Architect</h3>
+                    <div class="my-6">
+                        <span class="text-4xl font-bold text-white">$29</span>
+                        <span class="text-gray-400">/mo</span>
+                    </div>
+                    <ul class="space-y-4 mb-8 text-gray-300">
+                        <li class="flex items-center"><i class="fas fa-check text-blue-400 mr-2"></i> Unlimited Leads
+                        </li>
+                        <li class="flex items-center"><i class="fas fa-check text-blue-400 mr-2"></i> Full AI Enrichment
+                        </li>
+                        <li class="flex items-center"><i class="fas fa-check text-blue-400 mr-2"></i> Email Finder</li>
+                        <li class="flex items-center"><i class="fas fa-check text-blue-400 mr-2"></i> Priority Support
+                        </li>
+                    </ul>
+                    <a href="#"
+                        class="block w-full text-center py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 font-bold transition">Upgrade
+                        Now</a>
+                </div>
+
+                <!-- Agency Tier -->
+                <div class="p-8 rounded-2xl bg-card border border-gray-700">
+                    <h3 class="text-xl font-bold text-white">Agency</h3>
+                    <div class="my-6">
+                        <span class="text-4xl font-bold text-white">$99</span>
+                        <span class="text-gray-400">/mo</span>
+                    </div>
+                    <ul class="space-y-4 mb-8 text-gray-400">
+                        <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> 5 Team Seats</li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> API Access</li>
+                        <li class="flex items-center"><i class="fas fa-check text-green-400 mr-2"></i> Whitelabel
+                            Reports</li>
+                    </ul>
+                    <a href="#"
+                        class="block w-full text-center py-3 rounded-lg border border-gray-600 text-white hover:bg-gray-800 transition">Contact
+                        Sales</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-card border-t border-gray-800 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center run">
+            <div class="text-gray-400 mb-4 md:mb-0">
+                &copy; 2026 MapLeads AI. All rights reserved.
+            </div>
+            <div class="flex space-x-6">
+                <a href="#" class="text-gray-400 hover:text-white">Privacy Policy</a>
+                <a href="#" class="text-gray-400 hover:text-white">Terms of Service</a>
+                <a href="#" class="text-gray-400 hover:text-white">Support</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>

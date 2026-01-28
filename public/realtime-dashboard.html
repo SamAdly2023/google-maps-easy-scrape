@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Client Dashboard - MapLeads AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge.connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.disconnected {
+            background: #fee2e2;
+            color: #7f1d1d;
+        }
+
+        .pulsing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .activity-item {
+            padding: 12px;
+            background: white;
+            border-left: 4px solid var(--primary);
+            margin: 8px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideUp 0.3s ease-out;
+            max-width: 300px;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .notification.success {
+            border-left: 4px solid var(--success);
+        }
+
+        .notification.error {
+            border-left: 4px solid var(--danger);
+        }
+
+        .notification.warning {
+            border-left: 4px solid var(--warning);
+        }
+
+        .event-log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .event-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin-right: 12px;
+        }
+
+        .event-icon.scrape {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .event-icon.error {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .event-icon.export {
+            background: #dcfce7;
+            color: var(--success);
+        }
+
+        .event-icon.login {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="min-h-screen p-8">
+        <div class="max-w-4xl mx-auto">
+            <!-- Header -->
+            <div
+                style="background: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1 style="font-size: 24px; font-weight: bold; color: #111827; margin-bottom: 8px;">
+                            <i class="fas fa-tachometer-alt"></i> Real-Time Client Dashboard
+                        </h1>
+                        <p style="color: #6b7280; font-size: 14px;">Live activity streaming via WebSocket</p>
+                    </div>
+                    <div>
+                        <div class="status-badge connected" id="statusBadge">
+                            <div class="pulsing-dot"></div>
+                            <span>Connecting...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+                <div class="metric-card">
+                    <div style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">
+                        <i class="fas fa-activity"></i> Connection Status
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #111827;" id="statsUptime">0m 0s</div>
+                </div>
+
+                <div class="metric-card">
+                    <div style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">
+                        <i class="fas fa-database"></i> Events Received
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #111827;" id="statsEvents">0</div>
+                </div>
+
+                <div class="metric-card">
+                    <div style="color: #6b7280; font-size: 14px; margin-bottom: 8px;">
+                        <i class="fas fa-exclamation-circle"></i> Errors
+                    </div>
+                    <div style="font-size: 24px; font-weight: bold; color: #111827;" id="statsErrors">0</div>
+                </div>
+            </div>
+
+            <!-- Control Panel -->
+            <div
+                style="background: white; padding: 16px; border-radius: 8px; margin-bottom: 24px; display: flex; gap: 8px;">
+                <button class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+                    onclick="subscribeToScrapes()">
+                    <i class="fas fa-plus-circle"></i> Subscribe to Scrapes
+                </button>
+                <button class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                    onclick="unsubscribeFromScrapes()">
+                    <i class="fas fa-minus-circle"></i> Unsubscribe
+                </button>
+                <button class="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition"
+                    onclick="clearLog()">
+                    <i class="fas fa-trash-alt"></i> Clear Log
+                </button>
+            </div>
+
+            <!-- Event Log -->
+            <div
+                style="background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);">
+                <h2 style="font-size: 18px; font-weight: bold; color: #111827; margin-bottom: 16px;">
+                    <i class="fas fa-stream"></i> Real-Time Event Stream
+                </h2>
+                <div class="event-log" id="eventLog">
+                    <div style="text-align: center; color: #9ca3af; padding: 40px;">
+                        <i class="fas fa-wifi" style="font-size: 32px; margin-bottom: 12px;"></i>
+                        <p>Waiting for WebSocket connection...</p>
+                        <p style="font-size: 12px; margin-top: 8px;">Events will appear here in real-time</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notificationContainer"></div>
+
+    <script src="/js/realtime-client.js"></script>
+    <script>
+        // State
+        const state = {
+            eventsReceived: 0,
+            errorsReceived: 0,
+            startTime: Date.now(),
+            rtc: null,
+            userId: 'demo-user-' + Math.random().toString(36).substr(2, 9)
+        };
+
+        /**
+         * Initialize Real-Time Client
+         */
+        function initialize() {
+            console.log('Initializing real-time client for user:', state.userId);
+
+            state.rtc = new RealtimeClient(state.userId);
+
+            // Listen for connection events
+            state.rtc.on('connected', () => {
+                console.log('✅ Connected to server');
+                updateStatusBadge('connected', 'Connected');
+                showNotification('Connected to server', 'success');
+
+                // Auto-subscribe to scrapes
+                subscribeToScrapes();
+            });
+
+            state.rtc.on('disconnected', () => {
+                console.log('❌ Disconnected from server');
+                updateStatusBadge('disconnected', 'Disconnected');
+            });
+
+            state.rtc.on('error', (error) => {
+                console.error('WebSocket error:', error);
+                showNotification('Connection error: ' + error, 'error');
+                state.errorsReceived++;
+                updateStats();
+            });
+
+            // Listen for notifications
+            state.rtc.on('notification', (data) => {
+                console.log('📬 Notification received:', data);
+                addEventToLog(data);
+                state.eventsReceived++;
+                updateStats();
+            });
+
+            // Listen for specific topics
+            state.rtc.on('scrapes', (data) => {
+                console.log('📊 Scrape event:', data);
+                addEventToLog({
+                    type: 'scrape_event',
+                    ...data
+                });
+            });
+
+            state.rtc.on('errors', (data) => {
+                console.log('⚠️ Error event:', data);
+                state.errorsReceived++;
+                addEventToLog({
+                    type: 'error_event',
+                    ...data
+                }, 'error');
+            });
+
+            state.rtc.on('activity', (data) => {
+                console.log('👤 Activity event:', data);
+                addEventToLog(data, 'activity');
+            });
+
+            // Update uptime
+            setInterval(() => {
+                const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('statsUptime').textContent =
+                    `${minutes}m ${seconds}s`;
+            }, 1000);
+        }
+
+        /**
+         * Update status badge
+         */
+        function updateStatusBadge(status, text) {
+            const badge = document.getElementById('statusBadge');
+            badge.className = 'status-badge ' + status;
+            badge.innerHTML = `
+                <div class="pulsing-dot"></div>
+                <span>${text}</span>
+            `;
+        }
+
+        /**
+         * Subscribe to scrapes topic
+         */
+        function subscribeToScrapes() {
+            if (state.rtc && state.rtc.isConnected()) {
+                state.rtc.subscribe('scrapes');
+                showNotification('Subscribed to scrapes', 'success');
+            } else {
+                showNotification('Not connected yet', 'warning');
+            }
+        }
+
+        /**
+         * Unsubscribe from scrapes
+         */
+        function unsubscribeFromScrapes() {
+            if (state.rtc && state.rtc.isConnected()) {
+                state.rtc.unsubscribe('scrapes');
+                showNotification('Unsubscribed from scrapes', 'warning');
+            }
+        }
+
+        /**
+         * Add event to log
+         */
+        function addEventToLog(data, type = 'notification') {
+            const log = document.getElementById('eventLog');
+
+            // Clear empty state
+            if (log.innerHTML.includes('Waiting for WebSocket')) {
+                log.innerHTML = '';
+            }
+
+            const eventIcon = getEventIcon(type);
+            const timestamp = new Date(data.timestamp).toLocaleTimeString();
+
+            const eventItem = document.createElement('div');
+            eventItem.className = 'activity-item';
+            eventItem.innerHTML = `
+                <div style="display: flex; align-items: flex-start;">
+                    <div class="event-icon ${type}">${eventIcon}</div>
+                    <div style="flex: 1;">
+                        <div style="font-weight: 600; color: #111827; margin-bottom: 4px;">
+                            ${formatEventTitle(data)}
+                        </div>
+                        <div style="color: #6b7280; font-size: 12px;">
+                            ${formatEventDescription(data)}
+                        </div>
+                        <div style="color: #9ca3af; font-size: 11px; margin-top: 4px;">
+                            ${timestamp}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            log.insertBefore(eventItem, log.firstChild);
+
+            // Keep only last 50 events
+            while (log.children.length > 50) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        /**
+         * Get event icon
+         */
+        function getEventIcon(type) {
+            const icons = {
+                'scrape': '<i class="fas fa-database"></i>',
+                'error': '<i class="fas fa-exclamation-circle"></i>',
+                'export': '<i class="fas fa-download"></i>',
+                'login': '<i class="fas fa-sign-in-alt"></i>',
+                'activity': '<i class="fas fa-bolt"></i>',
+                'notification': '<i class="fas fa-bell"></i>'
+            };
+            return icons[type] || icons['notification'];
+        }
+
+        /**
+         * Format event title
+         */
+        function formatEventTitle(data) {
+            if (data.topic === 'scrapes') {
+                return `Scrape ${data.event || data.type}`;
+            }
+            if (data.topic === 'errors') {
+                return `Error: ${data.message || 'Unknown'}`;
+            }
+            if (data.type === 'error_event') {
+                return `Error: ${data.message}`;
+            }
+            return data.message || data.type || 'Event';
+        }
+
+        /**
+         * Format event description
+         */
+        function formatEventDescription(data) {
+            const descriptions = [];
+
+            if (data.data?.query) descriptions.push(`Query: ${data.data.query}`);
+            if (data.data?.resultCount) descriptions.push(`Results: ${data.data.resultCount}`);
+            if (data.type) descriptions.push(`Type: ${data.type}`);
+            if (data.severity) descriptions.push(`Severity: ${data.severity}`);
+
+            return descriptions.join(' • ') || 'No additional details';
+        }
+
+        /**
+         * Update statistics
+         */
+        function updateStats() {
+            document.getElementById('statsEvents').textContent = state.eventsReceived;
+            document.getElementById('statsErrors').textContent = state.errorsReceived;
+        }
+
+        /**
+         * Show notification
+         */
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notificationContainer');
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">${message}</div>
+                    <button onclick="this.parentElement.parentElement.remove()" 
+                            style="background: none; border: none; cursor: pointer; color: #9ca3af; font-size: 16px;">
+                        ✕
+                    </button>
+                </div>
+            `;
+            container.appendChild(notification);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => notification.remove(), 5000);
+        }
+
+        /**
+         * Clear event log
+         */
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = `
+                <div style="text-align: center; color: #9ca3af; padding: 40px;">
+                    <i class="fas fa-inbox" style="font-size: 32px; margin-bottom: 12px;"></i>
+                    <p>Log cleared. Waiting for new events...</p>
+                </div>
+            `;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initialize);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (state.rtc) {
+                state.rtc.close();
+            }
+        });
+    </script>
+</body>
+
+</html>

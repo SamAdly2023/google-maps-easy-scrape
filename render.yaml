@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: mapleads-ai
+    runtime: node
+    startCommand: npm start
+    buildCommand: npm run build
+    plan: free
+    region: oregon
+    
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: FIREBASE_PROJECT_ID
+        value: ${FIREBASE_PROJECT_ID}
+      - key: FIREBASE_PRIVATE_KEY
+        value: ${FIREBASE_PRIVATE_KEY}
+      - key: FIREBASE_CLIENT_EMAIL
+        value: ${FIREBASE_CLIENT_EMAIL}
+      - key: FIREBASE_DATABASE_URL
+        value: ${FIREBASE_DATABASE_URL}
+      - key: ALLOWED_ORIGINS
+        value: https://yourdomain.render.com
+    
+    healthCheckPath: /health
+    
+    autoDeploy: true
