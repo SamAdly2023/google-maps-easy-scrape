@@ -395,7 +395,7 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
             try {
                 logger.info(`Fetching website content server-side for: ${websiteUrl}`);
                 websiteText = await fetchWebsiteContent(websiteUrl);
-                
+
                 // Pre-extract emails to ensure AI sees them
                 const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
                 const foundEmails = websiteText.match(emailRegex) || [];
@@ -469,6 +469,13 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
 
         let jsonString = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
         const jsonResult = JSON.parse(jsonString);
+
+        // Remove null values to prevent overwriting existing client-side data
+        Object.keys(jsonResult).forEach(key => {
+            if (jsonResult[key] === null) {
+                delete jsonResult[key];
+            }
+        });
 
         res.json(jsonResult);
 
