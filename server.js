@@ -379,7 +379,7 @@ const fetchWebsiteContent = async (url) => {
             .replace(/<[^>]+>/g, " ")
             .replace(/\s+/g, " ")
             .trim()
-            .substring(0, 3000);
+            .substring(0, 10000); // Increased limit to capture footers
     } catch (error) {
         return '';
     }
@@ -395,6 +395,13 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
             try {
                 logger.info(`Fetching website content server-side for: ${websiteUrl}`);
                 websiteText = await fetchWebsiteContent(websiteUrl);
+                
+                // Pre-extract emails to ensure AI sees them
+                const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9_-]+)/gi;
+                const foundEmails = websiteText.match(emailRegex) || [];
+                if (foundEmails.length > 0) {
+                    websiteText = `[EXTRACTED_EMAILS: ${foundEmails.join(', ')}] \n\n ${websiteText}`;
+                }
             } catch (err) {
                 logger.warn(`Server-side fetch failed for ${websiteUrl}`);
             }
@@ -402,12 +409,13 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
 
         if (!apiKey) {
             logger.error('GEMINI_API_KEY is not set in environment variables');
-            // Return a polite error that tells the user what to do in the UI
+            // ... (keep existing error response)
             return res.json({
                 seo_health: 0,
                 missing_features: "API Key Config Missing",
                 outreach_message: "Please configure GEMINI_API_KEY in Render Environment Variables to enable AI enrichment.",
                 email: null,
+                phone: null,
                 contact_person: "Admin"
             });
         }
@@ -421,15 +429,17 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
 
         Task: Extract contact details and analyze the business quality.
         Target Output:
-        1. "email": Look for email addresses in the snippet. If none, guess a generic one like info@domain.com ONLY if high confidence, else null.
-        2. "contact_person": key decision maker name if found, else "Owner/Manager".
-        3. "seo_health": 1-10 score.
-        4. "missing_features": List 2-3 critical missing things (e.g. "No SSL", "Slow Load").
-        5. "outreach_message": A very short, punchy cold email opener (max 20 words).
-        6. "website": The confirmed website URL (or fix it if broken).
+        1. "email": Look for email addresses in the snippet. Any valid email found (prioritize info@, contact@, hello@ or specific names). If multiple, pick the best one. Return null if none.
+        2. "phone": Look for a phone number in the snippet. Return null if none.
+        3. "contact_person": key decision maker name if found, else "Owner/Manager".
+        4. "seo_health": 1-10 score.
+        5. "missing_features": List 2-3 critical missing things (e.g. "No SSL", "Slow Load").
+        6. "outreach_message": A very short, punchy cold email opener (max 20 words).
+        7. "website": The confirmed website URL.
 
         Return ONLY raw JSON with these exact keys.
     `;
+
 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
@@ -470,6 +480,7 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
             missing_features: "Analysis Failed",
             outreach_message: "Error: " + error.message,
             email: null,
+            phone: null,
             contact_person: null
         });
     }
