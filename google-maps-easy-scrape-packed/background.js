@@ -112,26 +112,9 @@ async function enrichWithGemini(lead) {
 
     // Try to fetch website content for better email/contact extraction
     let websiteText = "";
-    if (websiteUrl && websiteUrl !== "No Website") {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-            const webRes = await fetch(websiteUrl, { signal: controller.signal });
-            const webHtml = await webRes.text();
-            clearTimeout(timeoutId);
+    // Client-side fetching removed to reduce permission requirements (validating with Chrome Web Store).
+    // The backend server will now fetch the website content if needed.
 
-            // Simple regex to strip HTML and get some meaningful text
-            // We take first 2000 chars to avoid token limits and keep it fast
-            websiteText = webHtml.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gm, "")
-                .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gm, "")
-                .replace(/<[^>]+>/g, " ")
-                .replace(/\s+/g, " ")
-                .trim()
-                .substring(0, 2000);
-        } catch (e) {
-            console.log("Could not fetch website content", e);
-        }
-    }
 
     // Call the Backend API instead of Gemini directly
     try {

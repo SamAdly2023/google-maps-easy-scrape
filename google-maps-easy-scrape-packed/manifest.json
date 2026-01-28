@@ -18,9 +18,8 @@
     ]
   },
   "host_permissions": [
-    "https://generativelanguage.googleapis.com/*",
-    "http://*/*",
-    "https://*/*"
+    "https://mapleads-ai.onrender.com/*",
+    "https://sheets.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"
