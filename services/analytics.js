@@ -312,4 +312,4 @@ class AnalyticsService {
 // Singleton instance
 const analytics = new AnalyticsService();
 
-module.exports = analytics;
+export default analytics;

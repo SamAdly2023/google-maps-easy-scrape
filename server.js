@@ -11,11 +11,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 import winston from 'winston';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
-const analytics = require('./services/analytics.js');
-const { metricsMiddleware, errorHandlerMiddleware } = require('./middleware/metrics.js');
+import analytics from './services/analytics.js';
+import { metricsMiddleware, errorHandlerMiddleware } from './middleware/metrics.js';
 
 dotenv.config();
 

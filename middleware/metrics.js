@@ -3,7 +3,7 @@
  * Tracks request/response times and errors
  */
 
-const analytics = require('../services/analytics');
+import analytics from '../services/analytics.js';
 
 /**
  * Middleware to track request metrics
@@ -64,7 +64,7 @@ const errorHandlerMiddleware = (err, req, res, next) => {
     });
 };
 
-module.exports = {
+export {
     metricsMiddleware,
     errorHandlerMiddleware
 };
