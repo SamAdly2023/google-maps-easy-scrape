@@ -266,11 +266,17 @@ function checkUsage() {
 function updateUsageCount(newCount) {
     const TODAY = new Date().toDateString();
     chrome.storage.local.get(['scrapeCount'], (data) => {
-        let count = (data.scrapeCount || 0) + newCount;
-        chrome.storage.local.set({ scrapeCount: count, scrapeDate: TODAY });
-
-        // Update UI
-        checkUsage();
+        let current = parseInt(data.scrapeCount || 0);
+        let count = current + newCount;
+        
+        // Use callback to ensure UI updates ONLY after storage is saved
+        chrome.storage.local.set({ scrapeCount: count, scrapeDate: TODAY }, () => {
+            if (chrome.runtime.lastError) {
+                console.error("Storage Error:", chrome.runtime.lastError);
+                return;
+            }
+            checkUsage();
+        });
     });
 }
 

@@ -43,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Auth Check
     checkAuthState(false);
 
+    // Listen for Scroll Updates
+    chrome.runtime.onMessage.addListener((message) => {
+        if (message.action === 'SCROLL_UPDATE') {
+            const statusText = document.getElementById('statusText');
+            if (statusText) statusText.textContent = message.status;
+        }
+    });
+
     // Attach Events
     googleLoginBtn.addEventListener('click', handleGoogleLogin);
     logoutBtn.addEventListener('click', handleLogout);
@@ -258,23 +266,38 @@ function checkUsage() {
 function updateUsageCount(newCount) {
     const TODAY = new Date().toDateString();
     chrome.storage.local.get(['scrapeCount'], (data) => {
-        let count = (data.scrapeCount || 0) + newCount;
-        chrome.storage.local.set({ scrapeCount: count, scrapeDate: TODAY });
-
-        // Update UI
-        checkUsage();
+        let current = parseInt(data.scrapeCount || 0);
+        let count = current + newCount;
+        
+        // Use callback to ensure UI updates ONLY after storage is saved
+        chrome.storage.local.set({ scrapeCount: count, scrapeDate: TODAY }, () => {
+             if (chrome.runtime.lastError) {
+                console.error("Storage Error:", chrome.runtime.lastError);
+                return;
+            }
+            checkUsage();
+        });
     });
 }
 
 // CSV Download Logic
 function downloadCsv(data) {
-    const headers = ['Title', 'Rating', 'Reviews', 'Phone', 'Industry', 'Address', 'Website', 'Maps Link', 'SEO', 'Missing', 'Outreach', 'Email', 'Contact'];
+    const headers = ['Title', 'Rating', 'Reviews', 'Phone', 'Email', 'Website', 'Industry', 'Address', 'Maps Link', 'SEO Score', 'Missing Features'];
     let csvContent = headers.join(",") + "\n";
 
     data.forEach(row => {
         const values = [
-            row.title, row.rating, row.reviewCount, row.phone, row.industry, row.address, row.companyUrl, row.href,
-            row.seo_health || '', row.missing_features || '', row.outreach_message || '', row.email || '', row.contact_person || ''
+            row.title,
+            row.rating,
+            row.reviewCount,
+            row.phone,
+            row.email || '', // Email (from enrichment) -> Now prioritized column
+            row.companyUrl, // Website
+            row.industry,
+            row.address,
+            row.href,
+            row.seo_health || '',
+            row.missing_features || ''
         ];
         csvContent += values.map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(",") + "\n";
     });
@@ -283,7 +306,7 @@ function downloadCsv(data) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "google_maps_leads.csv";
+    link.download = `mapleads_${new Date().getTime()}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

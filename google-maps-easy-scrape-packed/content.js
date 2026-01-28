@@ -1,8 +1,13 @@
 // Listen for scraper messages
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'SCRAPE_MAPS') {
-        const data = scrapeData();
-        sendResponse({ success: true, data: data });
+        // Run async scroll and scrape
+        (async () => {
+            await performAutoScroll();
+            const data = scrapeData();
+            sendResponse({ success: true, data: data });
+        })();
+        return true; // Keep channel open
     }
 
     if (request.action === 'TOGGLE_SIDEBAR') {
@@ -14,7 +19,6 @@ let sidebarIframe = null;
 
 function toggleSidebar() {
     if (sidebarIframe) {
-        // Toggle visibility
         if (sidebarIframe.style.display === 'none') {
             sidebarIframe.style.display = 'block';
         } else {
@@ -23,7 +27,6 @@ function toggleSidebar() {
         return;
     }
 
-    // Create Iframe
     sidebarIframe = document.createElement('iframe');
     sidebarIframe.id = 'map-leads-sidebar';
     sidebarIframe.style.position = 'fixed';
@@ -31,16 +34,15 @@ function toggleSidebar() {
     sidebarIframe.style.right = '0px';
     sidebarIframe.style.width = '350px';
     sidebarIframe.style.height = '100vh';
-    sidebarIframe.style.zIndex = '2147483647'; // Max Z-index
+    sidebarIframe.style.zIndex = '2147483647';
     sidebarIframe.style.border = 'none';
     sidebarIframe.style.boxShadow = '-5px 0 15px rgba(0,0,0,0.3)';
     sidebarIframe.src = chrome.runtime.getURL('sidebar.html');
-    sidebarIframe.allow = "clipboard-write"; // Allow copying if needed
+    sidebarIframe.allow = "clipboard-write";
 
     document.body.appendChild(sidebarIframe);
 }
 
-// Listen for close message from iframe
 window.addEventListener('message', (event) => {
     if (event.data && event.data.action === 'CLOSE_SIDEBAR') {
         if (sidebarIframe) sidebarIframe.style.display = 'none';
@@ -48,14 +50,58 @@ window.addEventListener('message', (event) => {
 });
 
 
-// --- SCRAPING LOGIC ---
+// --- INFINITE SCROLL LOGIC ---
+
+async function performAutoScroll() {
+    // Try to find the feed container (it usually has role="feed")
+    const feed = document.querySelector('div[role="feed"]');
+    if (!feed) return;
+
+    let previousHeight = 0;
+    let sameHeightCount = 0;
+    const MAX_RETRIES = 5; // Increased retries for better coverage
+
+    // Send start message
+    chrome.runtime.sendMessage({ action: 'SCROLL_UPDATE', status: 'Starting Scroll...' });
+
+    while (sameHeightCount < MAX_RETRIES) {
+        // Scroll to bottom
+        feed.scrollTop = feed.scrollHeight;
+
+        // Notify items count
+        const items = feed.querySelectorAll('div[role="article"]').length;
+        chrome.runtime.sendMessage({
+            action: 'SCROLL_UPDATE',
+            status: `Scrolling (${items} found)`
+        });
+
+        // Wait for load (randomized)
+        await new Promise(r => setTimeout(r, 2000 + Math.random() * 1000));
+
+        const newHeight = feed.scrollHeight;
+        if (newHeight === previousHeight) {
+            sameHeightCount++;
+
+            // Check for "End of list" text
+            if (document.body.innerText.includes("You've reached the end of the list")) {
+                break;
+            }
+        } else {
+            previousHeight = newHeight;
+            sameHeightCount = 0;
+        }
+    }
+
+    chrome.runtime.sendMessage({ action: 'SCROLL_UPDATE', status: 'Extracting Data...' });
+}
+
+
+// --- SCRAPING PARSER ---
 
 function scrapeData() {
-    // 1. Find the main feed or results container
-    // Google Maps classes change often. We look for 'div[role="feed"]'
     const feed = document.querySelector('div[role="feed"]');
     if (!feed) {
-        console.warn('MapLeads AI: Feed not found. Use "Search this area" to spawn results.');
+        console.warn('MapLeads AI: Feed not found.');
         return [];
     }
 
@@ -65,46 +111,69 @@ function scrapeData() {
         let link = item.querySelector('a');
         if (!link) return null;
 
-        let lines = item.innerText.split('\n');
+        const textContent = item.innerText;
+        let lines = textContent.split('\n');
 
+        // 1. Title
         let title = item.querySelector('.fontHeadlineSmall')?.innerText || lines[0] || 'Unknown';
-        let ratingText = item.querySelector('.fontBodyMedium span[role="img"]')?.getAttribute('aria-label') || '';
 
-        // Extract Rating
+        // 2. Rating & Reviews
+        // Look for aria-label structure like "4.5 stars 100 Reviews"
+        let ratingText = item.querySelector('.fontBodyMedium span[role="img"]')?.getAttribute('aria-label') || '';
         let rating = 'N/A';
         let reviewCount = '0';
 
         if (ratingText) {
             const parts = ratingText.split(' ');
             if (parts.length > 0) rating = parts[0];
-            // Simple regex for parens (5)
-            const match = ratingText.match(/\((.*?)\)/);
+            const match = ratingText.match(/\((.*?)\)/) || ratingText.match(/(\d+)\s+Reviews/i);
             if (match) reviewCount = match[1];
         }
 
-        // Phone & Industry (Heuristic scan of text lines)
+        // 3. Phone Number
         let phone = '';
+        // Pattern for international and US formats
+        const phoneRegex = /((\+?\d{1,2}\s?)?(\(?\d{3}\)?[\s.-]?)?\d{3}[\s.-]?\d{4})/;
+
+        // Iterate lines to find phone
+        for (let line of lines) {
+            if (phoneRegex.test(line) && line.length < 30 && !line.includes('$')) { // filtering out prices
+                phone = line.match(phoneRegex)[0];
+                break;
+            }
+        }
+
+        // 4. Website
+        let companyUrl = '';
+        // Look for the separate "Website" button often present in list view
+        const websiteLink = item.querySelector('a[data-value="Website"]');
+        if (websiteLink) {
+            companyUrl = websiteLink.href;
+        } else {
+            // Fallback: look for generic links that are not the main map link
+            const allLinks = Array.from(item.querySelectorAll('a[href]'));
+            for (let a of allLinks) {
+                if (!a.href.includes('google.com/maps') && !a.href.includes('google.com/search')) {
+                    companyUrl = a.href;
+                    break;
+                }
+            }
+        }
+
+        // 5. Industry (heuristic: often 2nd line or after rating)
         let industry = '';
-        let address = '';
-
-        // Scan lines for phone pattern
-        const phoneRegex = /(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
-
-        lines.forEach(line => {
-            if (phoneRegex.test(line)) phone = line;
-            // Industry is usually the line after rating, or close to top
-            // This is tricky without specific classes, but we leave blank if unsure
-        });
-
+        if (lines.length > 1 && !lines[1].includes(rating) && !lines[1].includes('(')) {
+            industry = lines[1];
+        }
 
         return {
             title: title,
             rating: rating,
             reviewCount: reviewCount,
             phone: phone,
-            industry: industry, // Placeholder
-            address: address, // Placeholder
-            companyUrl: '',
+            industry: industry,
+            address: lines.join(' '), // Raw address context
+            companyUrl: companyUrl,
             href: link.href,
         };
     }).filter(i => i !== null);
