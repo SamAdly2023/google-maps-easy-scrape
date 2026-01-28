@@ -142,7 +142,14 @@ const verifyToken = async (req, res, next) => {
 };
 
 // Routes
+// Serve website files
+app.use(express.static(path.join(__dirname, 'website')));
+
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'website', 'index.html'));
+});
+
+app.get('/api/docs', (req, res) => {
     res.json({
         message: 'MapLeads AI Backend - API Server Running',
         version: '1.0.0',
