@@ -89,13 +89,25 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Initialize Firebase Admin SDK
 const firebaseConfigPath = process.env.FIREBASE_CONFIG_PATH || './firebase-config.json';
+
 if (fs.existsSync(firebaseConfigPath)) {
     const serviceAccount = JSON.parse(fs.readFileSync(firebaseConfigPath, 'utf8'));
     admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         databaseURL: process.env.FIREBASE_DATABASE_URL
     });
-    logger.info('✅ Firebase Admin SDK initialized');
+    logger.info('✅ Firebase Admin SDK initialized from file');
+} else if (process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
+    // Initialize from Environment Variables (Render, etc.)
+    admin.initializeApp({
+        credential: admin.credential.cert({
+            projectId: process.env.FIREBASE_PROJECT_ID,
+            clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+            privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n')
+        }),
+        databaseURL: process.env.FIREBASE_DATABASE_URL
+    });
+    logger.info('✅ Firebase Admin SDK initialized from Environment Variables');
 } else {
     logger.warn('⚠️ Firebase config file not found. Some features may not work.');
 }
