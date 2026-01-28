@@ -361,31 +361,74 @@ app.get('/health', (req, res) => {
 // 🤖 AI ENRICHMENT ENDPOINTS
 // ============================================
 
+const fetchWebsiteContent = async (url) => {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        const response = await fetch(url, { 
+            signal: controller.signal,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) return '';
+        const text = await response.text();
+        return text.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gm, "")
+            .replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gm, "")
+            .replace(/<[^>]+>/g, " ")
+            .replace(/\s+/g, " ")
+            .trim()
+            .substring(0, 3000);
+    } catch (error) {
+        return '';
+    }
+};
+
 app.post('/api/enrich', apiLimiter, async (req, res) => {
     try {
-        const { businessName, category, websiteUrl, websiteText } = req.body;
+        let { businessName, category, websiteUrl, websiteText } = req.body;
         const apiKey = process.env.GEMINI_API_KEY;
+
+        // Fallback: If client didn't send website text, try to fetch it server-side
+        if (!websiteText && websiteUrl && websiteUrl !== "No Website") {
+            try {
+                logger.info(`Fetching website content server-side for: ${websiteUrl}`);
+                websiteText = await fetchWebsiteContent(websiteUrl);
+            } catch (err) {
+                logger.warn(`Server-side fetch failed for ${websiteUrl}`);
+            }
+        }
 
         if (!apiKey) {
             logger.error('GEMINI_API_KEY is not set in environment variables');
-            return res.status(500).json({ error: 'AI service not configured' });
+            // Return a polite error that tells the user what to do in the UI
+            return res.json({
+                seo_health: 0,
+                missing_features: "API Key Config Missing",
+                outreach_message: "Please configure GEMINI_API_KEY in Render Environment Variables to enable AI enrichment.",
+                email: null,
+                contact_person: "Admin"
+            });
         }
 
         const promptText = `
-        Analyze the following business lead:
+        You are a lead generation expert. Analyze this business:
         Business Name: ${businessName}
         Category: ${category}
         Website: ${websiteUrl}
-        Website Content Snippet: ${websiteText || ''}
+        Website Content Snippet: ${websiteText || 'No content available'}
 
-        Based on this information, provide a JSON object with the following fields:
-        1. "seo_health": An integer from 1-10 estimating their SEO health (10 being perfect). If no website, give 0.
-        2. "missing_features": A short string listing potential missing features (e.g., "no booking system", "no website", "basic design").
-        3. "outreach_message": A personalized cold outreach message (max 2 sentences) offering web development or SEO services, mentioning their name and specific missing features.
-        4. "email": Extract a contact email address from the website text if present, otherwise null.
-        5. "contact_person": Extract a key contact person's name (founder, owner, manager) from the website text if present, otherwise null.
+        Task: Extract contact details and analyze the business quality.
+        Target Output:
+        1. "email": Look for email addresses in the snippet. If none, guess a generic one like info@domain.com ONLY if high confidence, else null.
+        2. "contact_person": key decision maker name if found, else "Owner/Manager".
+        3. "seo_health": 1-10 score.
+        4. "missing_features": List 2-3 critical missing things (e.g. "No SSL", "Slow Load").
+        5. "outreach_message": A very short, punchy cold email opener (max 20 words).
+        6. "website": The confirmed website URL (or fix it if broken).
 
-        Return ONLY the raw JSON object. Do not include markdown formatting like \`\`\`json.
+        Return ONLY raw JSON with these exact keys.
     `;
 
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
@@ -400,9 +443,7 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
 
         const response = await fetch(apiUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
 
@@ -414,9 +455,7 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
         const data = await response.json();
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-        if (!rawText) {
-            throw new Error('No content generated by Gemini.');
-        }
+        if (!rawText) throw new Error('No content generated by Gemini.');
 
         let jsonString = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
         const jsonResult = JSON.parse(jsonString);
@@ -425,10 +464,11 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
 
     } catch (error) {
         logger.error('Enrichment error:', error);
-        res.status(500).json({
+        // Returns success=false equivalent structure so UI doesn't crash but shows error
+        res.json({
             seo_health: 0,
-            missing_features: "Error analyzing",
-            outreach_message: "Could not generate message: Server error",
+            missing_features: "Analysis Failed",
+            outreach_message: "Error: " + error.message,
             email: null,
             contact_person: null
         });
