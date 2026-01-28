@@ -103,7 +103,7 @@ async function exportToSheets(data) {
 async function enrichWithGemini(lead) {
     // SECURITY UPDATE: API Key is now handled by the backend server
     // to prevent exposure in client-side code.
-    const BACKEND_URL = "https://mapleads-ai.render.com"; // Ensure this matches your Render URL
+    const BACKEND_URL = "https://mapleads-ai.onrender.com"; // Ensure this matches your Render URL
 
     // Fallback values if data is missing
     const businessName = lead.title || "Unknown Business";
