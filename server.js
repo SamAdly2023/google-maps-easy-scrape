@@ -434,8 +434,7 @@ app.post('/api/enrich', apiLimiter, async (req, res) => {
         3. "contact_person": key decision maker name if found, else "Owner/Manager".
         4. "seo_health": 1-10 score.
         5. "missing_features": List 2-3 critical missing things (e.g. "No SSL", "Slow Load").
-        6. "outreach_message": A very short, punchy cold email opener (max 20 words).
-        7. "website": The confirmed website URL.
+        6. "website": The confirmed website URL.
 
         Return ONLY raw JSON with these exact keys.
     `;

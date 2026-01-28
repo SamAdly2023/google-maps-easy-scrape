@@ -203,6 +203,8 @@ function performScrape() {
 
 function renderResults(data) {
     resultsTable.innerHTML = '';
+
+    // Create UI rows first
     data.forEach((item, index) => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -211,19 +213,41 @@ function renderResults(data) {
             <td id="enrich-${index}"><span class="enrich-badge enrich-pending">Pending...</span></td>
         `;
         resultsTable.appendChild(tr);
+    });
 
-        // Enrich
+    // Process enrichment in a queue to avoid 429 Rate Limits
+    processEnrichmentQueue(data);
+}
+
+function processEnrichmentQueue(items) {
+    let index = 0;
+
+    function processNext() {
+        if (index >= items.length) return;
+
+        const item = items[index];
+        const cell = document.getElementById(`enrich-${index}`);
+
+        // Visual indicator that this item is being processed
+        if (cell) cell.innerHTML = `<span class="enrich-badge" style="color:blue">Analyzing...</span>`;
+
         chrome.runtime.sendMessage({ action: 'ENRICH_DATA', data: item }, (response) => {
-            const cell = document.getElementById(`enrich-${index}`);
             if (response && response.success) {
                 // Update local data
                 scrapedResults[index] = { ...item, ...response.data };
-                cell.innerHTML = `<span class="enrich-badge enrich-success">✓ ${(response.data.seo_health || 0)}/10</span>`;
+                if (cell) cell.innerHTML = `<span class="enrich-badge enrich-success">✓ ${(response.data.seo_health || 0)}/10</span>`;
             } else {
-                cell.innerHTML = `<span class="enrich-badge enrich-error">Failed</span>`;
+                if (cell) cell.innerHTML = `<span class="enrich-badge enrich-error">Failed</span>`;
             }
+
+            // Move to next item after a delay to respect rate limits
+            index++;
+            setTimeout(processNext, 4000); // 4 seconds delay = 15 requests per minute
         });
-    });
+    }
+
+    // Start processing
+    processNext();
 }
 
 function handleExportSheets() {
@@ -268,10 +292,10 @@ function updateUsageCount(newCount) {
     chrome.storage.local.get(['scrapeCount'], (data) => {
         let current = parseInt(data.scrapeCount || 0);
         let count = current + newCount;
-        
+
         // Use callback to ensure UI updates ONLY after storage is saved
         chrome.storage.local.set({ scrapeCount: count, scrapeDate: TODAY }, () => {
-             if (chrome.runtime.lastError) {
+            if (chrome.runtime.lastError) {
                 console.error("Storage Error:", chrome.runtime.lastError);
                 return;
             }
