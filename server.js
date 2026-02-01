@@ -63,10 +63,11 @@ app.use(helmet({
         directives: {
             defaultSrc: ["'self'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdnjs.cloudflare.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net", "https://www.gstatic.com"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'", "https://*.firebaseio.com", "https://*.googleapis.com"],
-            fontSrc: ["'self'", "https://cdnjs.cloudflare.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com", "https://cdn.jsdelivr.net", "https://www.gstatic.com", "https://apis.google.com"],
+            imgSrc: ["'self'", "data:", "https:", "blob:"],
+            connectSrc: ["'self'", "https://*.firebaseio.com", "https://*.googleapis.com", "https://*.firebaseapp.com", "https://identitytoolkit.googleapis.com", "https://securetoken.googleapis.com"],
+            fontSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://fonts.gstatic.com"],
+            frameSrc: ["'self'", "https://*.firebaseapp.com", "https://*.googleapis.com"],
         },
     },
 }));
@@ -83,6 +84,37 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Webhook helpers
+const getWebhookUrl = (req) => {
+    return req?.body?.webhookUrl || process.env.WEBHOOK_URL || null;
+};
+
+const sendWebhook = async (webhookUrl, payload) => {
+    if (!webhookUrl) {
+        return { ok: false, status: 400, body: { error: 'Webhook URL not configured' } };
+    }
+
+    try {
+        const response = await fetch(webhookUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        let body = null;
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            body = await response.json();
+        } else {
+            body = await response.text();
+        }
+
+        return { ok: response.ok, status: response.status, body };
+    } catch (error) {
+        return { ok: false, status: 500, body: { error: error.message || 'Webhook delivery failed' } };
+    }
+};
 
 // Initialize Firebase Admin SDK
 const firebaseConfigPath = process.env.FIREBASE_CONFIG_PATH || './firebase-config.json';
@@ -144,6 +176,7 @@ const verifyToken = async (req, res, next) => {
 // Routes
 // Serve website files
 app.use(express.static(path.join(__dirname, 'website')));
+app.use(express.static(path.join(__dirname, 'public'))); // Serve public folder logic
 
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'website', 'index.html'));
@@ -158,6 +191,7 @@ app.get('/api/docs', (req, res) => {
             auth: '/api/auth/*',
             admin: '/api/admin/*',
             client: '/api/client/*',
+            webhooks: '/api/webhooks/*',
             docs: '/api/docs',
             health: '/health'
         }
@@ -207,6 +241,18 @@ app.get('/api/docs', (req, res) => {
                 description: 'Health check endpoint',
                 authentication: 'None',
                 response: { status: 'string', timestamp: 'string' }
+            },
+            {
+                path: 'POST /api/webhooks/test',
+                description: 'Send a sample webhook payload',
+                authentication: 'None',
+                body: {
+                    webhookUrl: 'string (optional if WEBHOOK_URL is set)',
+                    messageSubject: 'string (optional)',
+                    messageHtml: 'string (optional)',
+                    eventType: 'string (optional)'
+                },
+                response: { ok: 'boolean', status: 'number', body: 'object|string' }
             }
         ]
     });
@@ -321,7 +367,7 @@ app.post('/api/client/scrape',
     validate,
     async (req, res) => {
         try {
-            const { query, results } = req.body;
+            const { query, results, messageSubject, messageHtml, activationLicenseKey } = req.body;
 
             const docRef = await admin.firestore().collection('scrapes').add({
                 userId: req.user.uid,
@@ -331,14 +377,74 @@ app.post('/api/client/scrape',
                 status: 'completed'
             });
 
+            const webhookPayload = {
+                eventType: 'scrape.completed',
+                timestamp: new Date().toISOString(),
+                userId: req.user.uid,
+                scrapeId: docRef.id,
+                query,
+                resultsCount: Array.isArray(results) ? results.length : 0,
+                messageSubject: messageSubject || null,
+                messageHtml: messageHtml || null,
+                data: {
+                    activationLicenseKey: activationLicenseKey || null
+                }
+            };
+
+            const webhookResult = await sendWebhook(getWebhookUrl(req), webhookPayload);
+            if (!webhookResult.ok) {
+                logger.warn('Webhook delivery failed', webhookResult);
+            }
+
             logger.info(`Scrape saved for user ${req.user.uid}: ${docRef.id}`);
-            res.json({ success: true, scrapeId: docRef.id });
+            res.json({ success: true, scrapeId: docRef.id, webhook: { ok: webhookResult.ok, status: webhookResult.status } });
         } catch (error) {
             logger.error('Failed to save scrape:', error);
             res.status(500).json({ error: 'Failed to save scrape', details: error.message });
         }
     }
 );
+
+// Webhook test endpoint
+app.post('/api/webhooks/test', async (req, res) => {
+    const { messageSubject, messageHtml, eventType, activationLicenseKey } = req.body || {};
+
+    // Default sample values if not provided
+    const sampleKey = activationLicenseKey || 'sk_live_SAMPLE_KEY_12345';
+    const sampleSubject = messageSubject || 'Your Activation Key is Ready';
+    const sampleHtml = messageHtml ||
+        `<div style="font-family: sans-serif;">
+            <h2>Welcome to MapLeads AI!</h2>
+            <p>Here is your activation license key:</p>
+            <div style="background: #f4f4f4; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 18px;">
+                ${sampleKey}
+            </div>
+            <p>Please keep this key safe.</p>
+        </div>`;
+
+    const payload = {
+        eventType: eventType || 'email.notification.test',
+        timestamp: new Date().toISOString(),
+        messageSubject: sampleSubject,
+        messageHtml: sampleHtml,
+        data: {
+            userId: 'sample-user-123',
+            leadName: 'Acme Coffee',
+            leadEmail: 'hello@acmecoffee.com',
+            status: 'queued',
+            activationLicenseKey: sampleKey
+        }
+    };
+
+    const webhookResult = await sendWebhook(getWebhookUrl(req), payload);
+    const statusCode = webhookResult.ok ? 200 : 502;
+
+    res.status(statusCode).json({
+        ok: webhookResult.ok,
+        status: webhookResult.status,
+        body: webhookResult.body
+    });
+});
 
 // Serve static files - Admin Dashboard
 app.use('/admin', express.static(path.join(__dirname, 'public/admin')));

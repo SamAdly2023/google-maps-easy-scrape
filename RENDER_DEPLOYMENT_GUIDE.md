@@ -88,7 +88,10 @@ FIREBASE_DATABASE_URL        https://your-project.firebaseio.com
 ALLOWED_ORIGINS              https://yourdomain.render.com
 RENDER_SERVICE_NAME          mapleads-ai
 ADMIN_EMAIL                  admin@yourdomain.com
+WEBHOOK_URL                  https://services.leadconnectorhq.com/hooks/tbWaBmRj1ai6VJlNz3VY/webhook-trigger/XS24KEuGbxOPl5zpYXcz
 ```
+
+> **Note on WEBHOOK_URL:** Add your LeadConnector/Zapier URL here to automatically receive all leads on scrape completion.
 
 ### Step 2: Get Firebase Service Account
 

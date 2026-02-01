@@ -155,7 +155,7 @@
         window.addEventListener('load', () => {
             auth.onAuthStateChanged(user => {
                 if (user) {
-                    window.location.href = '/dashboard/index.html';
+                    window.location.href = '/client/index.html';
                 }
             });
         });
@@ -175,7 +175,7 @@
                 await auth.signInWithEmailAndPassword(email, password);
                 document.getElementById('successMessage').textContent = 'Login successful! Redirecting...';
                 document.getElementById('successMessage').classList.remove('hidden');
-                setTimeout(() => window.location.href = '/dashboard/index.html', 1500);
+                setTimeout(() => window.location.href = '/client/index.html', 1500);
             } catch (error) {
                 document.getElementById('errorMessage').textContent = error.message;
                 document.getElementById('errorMessage').classList.remove('hidden');
@@ -194,7 +194,7 @@
                 await result.user.updateProfile({ displayName: fullName });
                 document.getElementById('successMessage').textContent = 'Account created! Redirecting...';
                 document.getElementById('successMessage').classList.remove('hidden');
-                setTimeout(() => window.location.href = '/dashboard/index.html', 1500);
+                setTimeout(() => window.location.href = '/client/index.html', 1500);
             } catch (error) {
                 document.getElementById('errorMessage').textContent = error.message;
                 document.getElementById('errorMessage').classList.remove('hidden');

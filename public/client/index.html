@@ -47,6 +47,10 @@
                     </h1>
                 </div>
                 <div class="flex items-center space-x-6">
+                    <button id="adminSwitchBtn" onclick="window.location.href='/admin.html'"
+                        class="hidden text-green-400 hover:text-green-300 flex items-center border border-green-500/30 px-3 py-1 rounded hover:bg-green-500/10 transition">
+                        <i class="fas fa-user-shield mr-2"></i> Admin
+                    </button>
                     <button onclick="showSection('dashboard')"
                         class="text-blue-400 hover:text-blue-300 flex items-center">
                         <i class="fas fa-chart-bar mr-2"></i> Dashboard
@@ -322,8 +326,12 @@
         window.addEventListener('load', () => {
             auth.onAuthStateChanged(user => {
                 if (!user) {
-                    window.location.href = '/dashboard/login.html';
+                    window.location.href = '/client/login.html';
                 } else {
+                    if (user.email === 'samadly728@gmail.com') {
+                        const btn = document.getElementById('adminSwitchBtn');
+                        if (btn) btn.classList.remove('hidden');
+                    }
                     loadClientData(user);
                 }
             });

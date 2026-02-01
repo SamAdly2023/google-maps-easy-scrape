@@ -36,25 +36,43 @@
         const dashboard = document.getElementById('dashboard');
         const loginScreen = document.getElementById('loginScreen');
 
+        const clientDashboardUrl = '/client/index.html'; // Adjust logic if hosted differently
+
         // Login Logic
-        loginBtn.addEventListener('click', () => {
-            signInWithPopup(auth, provider)
-                .then((result) => {
-                    console.log("Logged in:", result.user.email);
-                    if (result.user.email !== 'samadly728@gmail.com') {
-                        alert("Access Denied. Admin only.");
-                    }
-                }).catch((error) => {
-                    console.error(error);
-                });
-        });
+        if (loginBtn) {
+            loginBtn.addEventListener('click', () => {
+                console.log("Login button clicked");
+                signInWithPopup(auth, provider)
+                    .then((result) => {
+                        console.log("Logged in:", result.user.email);
+                        if (result.user.email !== 'samadly728@gmail.com') {
+                            // If not admin, redirect to Client Dashboard
+                            console.log("Not admin, redirecting to Client Dashboard");
+                            window.location.href = clientDashboardUrl;
+                        } else {
+                            // Is Admin
+                            console.log("Admin logged in");
+                        }
+                    }).catch((error) => {
+                        console.error("Login Error:", error);
+                        alert("Login Failed: " + error.message);
+                    });
+            });
+        } else {
+            console.error("Login button element not found in DOM");
+        }
 
         // Auth State Listener
         onAuthStateChanged(auth, (user) => {
-            if (user && user.email === 'samadly728@gmail.com') {
-                loginScreen.classList.add('hidden');
-                dashboard.classList.remove('hidden');
-                loadStats();
+            if (user) {
+                if (user.email === 'samadly728@gmail.com') {
+                    loginScreen.classList.add('hidden');
+                    dashboard.classList.remove('hidden');
+                    loadStats();
+                } else {
+                    // Logged in but not admin, redirect
+                    window.location.href = clientDashboardUrl;
+                }
             } else {
                 loginScreen.classList.remove('hidden');
                 dashboard.classList.add('hidden');
@@ -114,6 +132,12 @@
                     class="block px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded">Subscriptions</a>
                 <a href="#"
                     class="block px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded">Settings</a>
+
+                <div class="mt-8 border-t border-gray-700 pt-4">
+                    <a href="/client/index.html" class="block px-4 py-2 text-green-400 hover:bg-gray-700 rounded">
+                        <i class="fas fa-external-link-alt mr-2"></i> Switch to Client
+                    </a>
+                </div>
             </nav>
         </div>
 
