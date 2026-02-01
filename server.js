@@ -70,6 +70,7 @@ app.use(helmet({
             frameSrc: ["'self'", "https://*.firebaseapp.com", "https://*.googleapis.com"],
         },
     },
+    crossOriginOpenerPolicy: false,
 }));
 app.use(compression()); // Compress responses
 app.use(metricsMiddleware); // Track request metrics
