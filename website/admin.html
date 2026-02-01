@@ -43,8 +43,24 @@
             loginBtn.addEventListener('click', () => {
                 console.log("Login button clicked");
                 signInWithPopup(auth, provider)
-                    .then((result) => {
+                    .then(async (result) => {
                         console.log("Logged in:", result.user.email);
+
+                        // Sync with Firestore
+                        const token = await result.user.getIdToken();
+                        await fetch('http://localhost:5000/api/user/profile', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify({
+                                email: result.user.email,
+                                displayName: result.user.displayName,
+                                photoURL: result.user.photoURL
+                            })
+                        });
+
                         if (result.user.email !== 'samadly728@gmail.com') {
                             // If not admin, redirect to Client Dashboard
                             console.log("Not admin, redirecting to Client Dashboard");
@@ -80,30 +96,91 @@
         });
 
         async function loadStats() {
-            // Mock Data for now (replace with Firestore queries later)
-            // const querySnapshot = await getDocs(collection(db, "users"));
-            // ...
+            try {
+                const user = auth.currentUser;
+                const token = await user.getIdToken();
 
-            document.getElementById('totalUsers').innerText = "1,245";
-            document.getElementById('monthlyRev').innerText = "$3,490";
-            document.getElementById('leadsScraped').innerText = "850k";
+                // Fetch Stats
+                const statsResponse = await fetch('http://localhost:5000/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const stats = await statsResponse.json();
 
-            const tbody = document.getElementById('userTable');
-            tbody.innerHTML = `
-                <tr class="border-b border-gray-700 hover:bg-gray-800">
-                    <td class="px-6 py-4">john.doe@gmail.com</td>
-                    <td class="px-6 py-4"><span class="bg-green-900 text-green-300 px-2 py-1 rounded text-xs">Pro</span></td>
-                    <td class="px-6 py-4">1,500</td>
-                    <td class="px-6 py-4">Jan 24, 2026</td>
-                </tr>
-                 <tr class="border-b border-gray-700 hover:bg-gray-800">
-                    <td class="px-6 py-4">sarah.smith@agency.com</td>
-                    <td class="px-6 py-4"><span class="bg-blue-900 text-blue-300 px-2 py-1 rounded text-xs">Agency</span></td>
-                    <td class="px-6 py-4">50,000</td>
-                    <td class="px-6 py-4">Jan 23, 2026</td>
-                </tr>
-            `;
+                document.getElementById('totalUsers').innerText = stats.totalUsers || 0;
+                document.getElementById('monthlyRev').innerText = "$0"; // Fallback until we implement payments
+                document.getElementById('leadsScraped').innerText = stats.totalScrapes || 0;
+
+                // Fetch Users for Table
+                const usersResponse = await fetch('http://localhost:5000/api/admin/users', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const users = await usersResponse.json();
+
+                // Populate Overview Table (First 5)
+                const overviewTbody = document.getElementById('userTable');
+                renderUserTable(overviewTbody, users.slice(0, 5));
+
+                // Populate All Users Table
+                const allUsersTbody = document.getElementById('allUsersTable');
+                renderUserTable(allUsersTbody, users, true);
+
+            } catch (error) {
+                console.error("Failed to load admin data:", error);
+            }
         }
+
+        function renderUserTable(tbody, users, detailed = false) {
+            if (users.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-6 py-4 text-center text-gray-500">No users found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = users.map(u => {
+                if (detailed) {
+                    return `
+                        <tr class="border-b border-gray-700 hover:bg-gray-800">
+                            <td class="px-6 py-4 font-mono text-xs text-gray-500">${u.id.substring(0, 8)}...</td>
+                            <td class="px-6 py-4">${u.email || 'No Email'}</td>
+                            <td class="px-6 py-4"><span class="bg-gray-700 px-2 py-1 rounded text-xs">${u.role || 'user'}</span></td>
+                             <td class="px-6 py-4 text-xs text-gray-400">
+                                ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td class="px-6 py-4">
+                                <button class="text-blue-400 hover:text-white text-sm">Edit</button>
+                            </td>
+                        </tr>
+                     `;
+                } else {
+                    return `
+                        <tr class="border-b border-gray-700 hover:bg-gray-800">
+                            <td class="px-6 py-4">${u.email || 'No Email'}</td>
+                            <td class="px-6 py-4">
+                                <span class="bg-${u.plan === 'pro' ? 'green' : (u.plan === 'agency' ? 'purple' : 'gray')}-900 text-${u.plan === 'pro' ? 'green' : (u.plan === 'agency' ? 'purple' : 'gray')}-300 px-2 py-1 rounded text-xs capitalize">
+                                    ${u.plan || 'Free'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">-</td>
+                            <td class="px-6 py-4 text-xs text-gray-400">
+                                ${u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'N/A'}
+                            </td>
+                        </tr>
+                    `;
+                }
+            }).join('');
+        }
+
+        window.showAdminSection = function (sectionId) {
+            document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById(sectionId).classList.remove('hidden');
+
+            // Update Title
+            const titles = {
+                'section-overview': 'Dashboard Overview',
+                'section-users': 'User Management',
+                'section-settings': 'Platform Settings'
+            };
+            document.getElementById('pageTitle').innerText = titles[sectionId] || 'Dashboard';
+        };
     </script>
 </head>
 
@@ -125,12 +202,12 @@
         <div class="fixed left-0 top-0 w-64 h-full bg-gray-800 border-r border-gray-700 p-4">
             <h2 class="text-xl font-bold text-white mb-8 px-4">MapLeads Admin</h2>
             <nav class="space-y-2">
-                <a href="#" class="block px-4 py-2 bg-blue-600 text-white rounded">Overview</a>
-                <a href="#" class="block px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded">Users</a>
-                <a href="#"
-                    class="block px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded">Subscriptions</a>
-                <a href="#"
-                    class="block px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded">Settings</a>
+                <a href="#" onclick="showAdminSection('section-overview')"
+                    class="block px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded transition">Overview</a>
+                <a href="#" onclick="showAdminSection('section-users')"
+                    class="block px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition">Users</a>
+                <a href="#" onclick="showAdminSection('section-settings')"
+                    class="block px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition">Settings</a>
 
                 <div class="mt-8 border-t border-gray-700 pt-4">
                     <a href="/client/index.html" class="block px-4 py-2 text-green-400 hover:bg-gray-700 rounded">
@@ -142,45 +219,86 @@
 
         <!-- Main Content -->
         <div class="ml-64 p-8">
-            <h1 class="text-3xl font-bold text-white mb-8">Dashboard Overview</h1>
+            <h1 id="pageTitle" class="text-3xl font-bold text-white mb-8">Dashboard Overview</h1>
 
-            <!-- Stats Grid -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <h3 class="text-gray-400 text-sm font-medium mb-2">Total Users</h3>
-                    <div id="totalUsers" class="text-3xl font-bold text-white">...</div>
+            <!-- Overview Section -->
+            <div id="section-overview" class="admin-section">
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-gray-400 text-sm font-medium mb-2">Total Users</h3>
+                        <div id="totalUsers" class="text-3xl font-bold text-white">...</div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-gray-400 text-sm font-medium mb-2">Monthly Revenue</h3>
+                        <div id="monthlyRev" class="text-3xl font-bold text-green-400">...</div>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                        <h3 class="text-gray-400 text-sm font-medium mb-2">Leads Scraped</h3>
+                        <div id="leadsScraped" class="text-3xl font-bold text-blue-400">...</div>
+                    </div>
                 </div>
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <h3 class="text-gray-400 text-sm font-medium mb-2">Monthly Revenue</h3>
-                    <div id="monthlyRev" class="text-3xl font-bold text-green-400">...</div>
-                </div>
-                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
-                    <h3 class="text-gray-400 text-sm font-medium mb-2">Leads Scraped</h3>
-                    <div id="leadsScraped" class="text-3xl font-bold text-blue-400">...</div>
+
+                <!-- Recent Users -->
+                <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                    <div class="p-6 border-b border-gray-700">
+                        <h3 class="text-lg font-bold text-white">Recent Users</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-700/50 text-gray-400 uppercase text-xs">
+                                <tr>
+                                    <th class="px-6 py-3">Email</th>
+                                    <th class="px-6 py-3">Plan</th>
+                                    <th class="px-6 py-3">Leads</th>
+                                    <th class="px-6 py-3">Joined</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTable">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Recent Users -->
-            <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-                <div class="p-6 border-b border-gray-700">
-                    <h3 class="text-lg font-bold text-white">Recent Users</h3>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-700/50 text-gray-400 uppercase text-xs">
-                            <tr>
-                                <th class="px-6 py-3">Email</th>
-                                <th class="px-6 py-3">Plan</th>
-                                <th class="px-6 py-3">Leads</th>
-                                <th class="px-6 py-3">Joined</th>
-                            </tr>
-                        </thead>
-                        <tbody id="userTable">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+            <!-- Users Section (Hidden by default) -->
+            <div id="section-users" class="admin-section hidden">
+                <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
+                    <div class="p-6 border-b border-gray-700 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-white">All Users</h3>
+                        <div class="flex space-x-2">
+                            <input type="text" placeholder="Search email..."
+                                class="bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm text-white">
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left">
+                            <thead class="bg-gray-700/50 text-gray-400 uppercase text-xs">
+                                <tr>
+                                    <th class="px-6 py-3">ID</th>
+                                    <th class="px-6 py-3">Email</th>
+                                    <th class="px-6 py-3">Role</th>
+                                    <th class="px-6 py-3">Created</th>
+                                    <th class="px-6 py-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allUsersTable">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <!-- Settings Section (Placeholder) -->
+            <div id="section-settings" class="admin-section hidden">
+                <div class="bg-gray-800 p-6 rounded-xl border border-gray-700">
+                    <h3 class="text-lg font-bold text-white mb-4">Platform Settings</h3>
+                    <p class="text-gray-400">Settings configuration coming soon...</p>
+                </div>
+            </div>
+
         </div>
     </div>
 </body>

@@ -172,7 +172,23 @@
             const password = document.getElementById('password').value;
 
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                const result = await auth.signInWithEmailAndPassword(email, password);
+
+                // Sync user to Firestore
+                const token = await result.user.getIdToken();
+                await fetch('http://localhost:5000/api/user/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        email: result.user.email,
+                        displayName: result.user.displayName,
+                        photoURL: result.user.photoURL
+                    })
+                });
+
                 document.getElementById('successMessage').textContent = 'Login successful! Redirecting...';
                 document.getElementById('successMessage').classList.remove('hidden');
                 setTimeout(() => window.location.href = '/client/index.html', 1500);
@@ -192,6 +208,22 @@
             try {
                 const result = await auth.createUserWithEmailAndPassword(email, password);
                 await result.user.updateProfile({ displayName: fullName });
+
+                // Sync user to Firestore
+                const token = await result.user.getIdToken();
+                await fetch('http://localhost:5000/api/user/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        email: result.user.email,
+                        displayName: fullName,
+                        photoURL: result.user.photoURL
+                    })
+                });
+
                 document.getElementById('successMessage').textContent = 'Account created! Redirecting...';
                 document.getElementById('successMessage').classList.remove('hidden');
                 setTimeout(() => window.location.href = '/client/index.html', 1500);

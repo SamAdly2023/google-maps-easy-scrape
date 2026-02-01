@@ -288,12 +288,13 @@ app.post('/api/auth/verify',
 // Admin Routes (with rate limiting)
 app.get('/api/admin/stats', apiLimiter, verifyToken, async (req, res) => {
     try {
-        // Check if user is admin
+        // Check if user is admin (Check Firestore Role OR Hardcoded Email)
         const userDoc = await admin.firestore().collection('users').doc(req.user.uid).get();
         const userData = userDoc.data();
+        const isAdmin = (userData?.role === 'admin') || (req.user.email === 'samadly728@gmail.com');
 
-        if (userData?.role !== 'admin') {
-            logger.warn(`Unauthorized admin access attempt by user: ${req.user.uid}`);
+        if (!isAdmin) {
+            logger.warn(`Unauthorized admin access attempt by user: ${req.user.uid} (${req.user.email})`);
             return res.status(403).json({ error: 'Admin access required' });
         }
 
@@ -304,7 +305,12 @@ app.get('/api/admin/stats', apiLimiter, verifyToken, async (req, res) => {
         const stats = {
             totalUsers: usersSnapshot.size,
             totalScrapes: scrapesSnapshot.size,
-            activeUsers: usersSnapshot.docs.filter(d => d.data().lastActive > Date.now() - 7 * 24 * 60 * 60 * 1000).length
+            // Calculate monthly revenue (mock calculation based on plan types if available)
+            monthlyRevenue: 0,
+            activeUsers: usersSnapshot.empty ? 0 : usersSnapshot.docs.filter(d => {
+                const lastLogin = d.data().lastLogin;
+                return lastLogin && (Date.now() - new Date(lastLogin).getTime() < 7 * 24 * 60 * 60 * 1000);
+            }).length // Active in last 7 days
         };
 
         logger.info(`Admin stats retrieved by user: ${req.user.uid}`);
@@ -318,15 +324,19 @@ app.get('/api/admin/stats', apiLimiter, verifyToken, async (req, res) => {
 app.get('/api/admin/users', apiLimiter, verifyToken, async (req, res) => {
     try {
         const userDoc = await admin.firestore().collection('users').doc(req.user.uid).get();
-        if (userDoc.data()?.role !== 'admin') {
+        const userData = userDoc.data();
+        const isAdmin = (userData?.role === 'admin') || (req.user.email === 'samadly728@gmail.com');
+
+        if (!isAdmin) {
             logger.warn(`Unauthorized admin users access attempt by: ${req.user.uid}`);
             return res.status(403).json({ error: 'Admin access required' });
         }
 
-        const usersSnapshot = await admin.firestore().collection('users').get();
+        const usersSnapshot = await admin.firestore().collection('users').orderBy('createdAt', 'desc').get();
         const users = usersSnapshot.docs.map(doc => ({
             id: doc.id,
-            ...doc.data()
+            ...doc.data(),
+            createdAt: doc.data().createdAt ? new Date(doc.data().createdAt).toISOString() : null
         }));
 
         logger.info(`Admin users list retrieved by: ${req.user.uid}`);
@@ -334,6 +344,40 @@ app.get('/api/admin/users', apiLimiter, verifyToken, async (req, res) => {
     } catch (error) {
         logger.error('Failed to fetch users:', error);
         res.status(500).json({ error: 'Failed to fetch users', details: error.message });
+    }
+});
+
+// User Profile Routes
+app.post('/api/user/profile', apiLimiter, verifyToken, async (req, res) => {
+    try {
+        const { displayName, email, photoURL } = req.body;
+        const userRef = admin.firestore().collection('users').doc(req.user.uid);
+
+        // Use merge to update exist or create new without overwriting everything
+        await userRef.set({
+            uid: req.user.uid,
+            email: email || req.user.email,
+            displayName: displayName || req.user.name,
+            photoURL: photoURL || req.user.picture,
+            lastLogin: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // Check if createdAt exists, if not add it
+        const doc = await userRef.get();
+        if (!doc.data().createdAt) {
+            await userRef.update({
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                role: 'user', // Default role
+                plan: 'free'  // Default plan
+            });
+        }
+
+        logger.info(`User profile updated: ${req.user.uid}`);
+        res.json({ success: true });
+    } catch (error) {
+        logger.error('Failed to update user profile:', error);
+        res.status(500).json({ error: 'Failed to update profile' });
     }
 });
 
